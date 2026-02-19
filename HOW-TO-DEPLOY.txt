@@ -1,0 +1,63 @@
+# 🌪 VORTEX — How to Deploy & Share
+
+## What you have
+This folder contains a complete phone app (Progressive Web App). 
+No App Store needed — anyone with an iPhone can install it from a link.
+
+---
+
+## Step 1: Create a free GitHub account
+1. Go to https://github.com
+2. Click "Sign up" — it's free
+3. Verify your email
+
+---
+
+## Step 2: Create a new repository
+1. Click the "+" icon in the top right → "New repository"
+2. Name it: **vortex-tornado**
+3. Make sure it's set to **Public**
+4. Click "Create repository"
+
+---
+
+## Step 3: Upload your files
+1. On your new repository page, click "uploading an existing file"
+2. Drag the entire contents of this folder into the upload area:
+   - index.html
+   - manifest.json
+   - sw.js
+   - icons/ (the whole folder)
+3. Scroll down, click "Commit changes"
+
+---
+
+## Step 4: Turn on GitHub Pages (free hosting)
+1. Go to your repository's **Settings** tab
+2. Click **Pages** in the left sidebar
+3. Under "Branch", select **main** and click Save
+4. Wait 1-2 minutes — GitHub will show you your URL:
+   **https://yourusername.github.io/vortex-tornado**
+
+---
+
+## Step 5: Share with friends!
+Send them the link. When they open it in **Safari** on iPhone:
+
+1. Tap the **Share button** (box with arrow ⬆) at the bottom
+2. Scroll down and tap **"Add to Home Screen"**
+3. Tap **"Add"**
+
+✅ Vortex now appears on their home screen like a real app!
+
+---
+
+## Troubleshooting
+- **Must be opened in Safari** (not Chrome) for the "Add to Home Screen" option
+- If the app shows a blank screen, wait 5 minutes and try refreshing
+- Make sure all 4 files + the icons folder were uploaded
+
+---
+
+## Your friends' link will be:
+https://[YOUR-GITHUB-USERNAME].github.io/vortex-tornado

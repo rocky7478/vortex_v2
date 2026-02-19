@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vortex">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d13">
+<meta name="description" content="24-hour tornado probability forecast — real Open-Meteo and NWS data, no API key required">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="./icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="./icons/icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<title>Vortex — Tornado Forecast</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+:root{
+  --bg:#0b0d13;--bg2:#10131b;--bg3:#161b27;
+  --border:#1f2638;--dim:#2d3550;--muted:#5a6887;
+  --body:#8fa0c4;--text:#c8d4f0;--white:#e8f0ff;
+  --red:#ff3b20;--orange:#ff7820;--yellow:#ffc020;
+  --lime:#80ff30;--green:#20ffa0;--teal:#20e8ff;--blue:#2090ff;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(32,144,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(32,144,255,.03) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:-20%;right:-10%;width:60vw;height:60vw;background:radial-gradient(ellipse,rgba(255,59,32,.05) 0%,transparent 65%);pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top,0px)) 18px calc(80px + env(safe-area-inset-bottom,0px))}
+header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;margin-bottom:28px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo{width:44px;height:44px;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-logo svg{width:44px;height:44px;animation:logo-spin 20s linear infinite}
+@keyframes logo-spin{to{transform:rotate(360deg)}}
+.brand-logo::after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red)}
+.brand-name{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:4px;color:var(--white);line-height:1}
+.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.hdr-right{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-align:right;line-height:2;letter-spacing:1px}
+.live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:middle;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.search-section{margin-bottom:24px}
+.search-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+.search-wrap{position:relative}
+.search-input{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:18px;font-weight:300;padding:16px 52px 16px 16px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;border-radius:0}
+.search-input:focus{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+.search-input::placeholder{color:var(--dim)}
+.search-btn{position:absolute;right:0;top:0;bottom:0;width:52px;background:var(--red);border:none;cursor:pointer;font-size:18px;transition:background .15s;display:flex;align-items:center;justify-content:center}
+.search-btn:hover{background:#e02d10}
+.search-btn:disabled{background:var(--muted);cursor:not-allowed}
+.ac-list{position:absolute;top:calc(100% + 1px);left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-top:none;z-index:100;display:none;max-height:220px;overflow-y:auto}
+.ac-list.open{display:block}
+.ac-item{padding:13px 16px;cursor:pointer;font-size:14px;color:var(--body);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:background .1s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--bg3);color:var(--white)}
+.ac-item .pin{color:var(--red);font-size:11px;flex-shrink:0}
+.loading{display:none;padding:60px 0;text-align:center}
+.loading.on{display:block}
+.spinner{width:88px;height:88px;margin:0 auto 20px;position:relative}
+.spinner .r{position:absolute;inset:0;border-radius:50%;border:1.5px solid transparent}
+.spinner .r1{border-top-color:var(--red);animation:spin 1.1s linear infinite}
+.spinner .r2{inset:11px;border-right-color:var(--orange);animation:spin .8s linear infinite reverse}
+.spinner .r3{inset:22px;border-bottom-color:var(--yellow);animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;color:var(--white)}
+.loading-steps{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);line-height:2.2}
+.ls{opacity:.3;transition:opacity .3s,color .3s}
+.ls.active{opacity:1;color:var(--teal)}
+.ls.active::before{content:'▶ '}
+.ls.done{opacity:.5;color:var(--green)}
+.ls.done::before{content:'✓ '}
+.error-box{display:none;background:rgba(255,59,32,.07);border:1px solid rgba(255,59,32,.25);padding:16px 20px;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red)}
+.error-box.on{display:block}
+.results{display:none}
+.results.on{display:block}
+.loc-strip{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);padding:12px 16px;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.loc-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--white)}
+.loc-meta{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-align:right;line-height:1.8;letter-spacing:.5px}
+.alert-bar{display:none;background:rgba(255,192,32,.06);border:1px solid rgba(255,192,32,.3);padding:10px 16px;margin-bottom:16px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--yellow);line-height:1.7}
+.alert-bar.on{display:block}
+.alert-bar.tornado{background:rgba(255,59,32,.1);border-color:rgba(255,59,32,.4);color:var(--red)}
+.prob-card{background:var(--bg2);border:1px solid var(--border);padding:22px;margin-bottom:18px;position:relative;overflow:hidden}
+.prob-card::before{content:'';position:absolute;inset:0;opacity:.05;transition:background .5s;pointer-events:none}
+.prob-card.rk-none::before{background:var(--green)}
+.prob-card.rk-marg::before{background:var(--lime)}
+.prob-card.rk-slight::before{background:var(--yellow)}
+.prob-card.rk-mod::before{background:var(--orange)}
+.prob-card.rk-high::before{background:var(--red)}
+.prob-card.rk-extreme::before{background:#ff40ff}
+.prob-grid{display:grid;grid-template-columns:170px 1fr;gap:22px;align-items:center}
+.prob-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+.prob-num{font-family:'Bebas Neue',sans-serif;font-size:88px;line-height:1;letter-spacing:-1px}
+.prob-pct{font-size:36px;opacity:.5}
+.prob-track{height:4px;background:var(--border);margin-top:8px;overflow:hidden}
+.prob-fill{height:100%;width:0;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.prob-risk{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;margin-top:6px}
+.prob-headline{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--white);line-height:1.2;margin-bottom:8px}
+.prob-summary{font-size:13px;font-weight:300;color:var(--body);line-height:1.65}
+.data-src{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.ds{font-family:'IBM Plex Mono',monospace;font-size:9px;border:1px solid var(--border);padding:3px 8px;color:var(--muted);letter-spacing:1px}
+.ds.live{border-color:var(--teal);color:var(--teal)}
+.sec{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+.timeline{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:20px}
+.ts{background:var(--bg2);border:1px solid var(--border);padding:10px 6px;text-align:center;position:relative;transition:border-color .2s,transform .15s}
+.ts:hover{transform:translateY(-2px)}
+.ts.peak{border-color:var(--orange)}
+.ts.warn{border-color:rgba(255,192,32,.5)}
+.ts-hr{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:5px;letter-spacing:.5px}
+.ts-prob{font-family:'Bebas Neue',sans-serif;font-size:24px;line-height:1;letter-spacing:1px}
+.ts-pct{font-size:11px;opacity:.5}
+.ts-bar{height:3px;background:var(--border);margin-top:6px;overflow:hidden}
+.ts-fill{height:100%;transition:width .8s ease-out}
+.ts-tag{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.ts-dot{position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%}
+.idx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:20px}
+.idx{background:var(--bg2);border:1px solid var(--border);padding:14px 12px}
+.idx-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.idx-abbr{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.idx-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:1px}
+.idx-val{font-family:'Bebas Neue',sans-serif;font-size:30px;line-height:1;letter-spacing:1px}
+.idx-unit{font-size:12px;font-family:'IBM Plex Sans',sans-serif;font-weight:300;opacity:.5}
+.idx-name{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.3}
+.idx-bar{height:2px;background:var(--border);margin-top:8px;overflow:hidden}
+.idx-fill{height:100%;transition:width .9s ease-out}
+.idx-thresh{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:4px}
+.windows{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:20px}
+.win{background:var(--bg2);border:1px solid var(--border);padding:14px}
+.win-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px}
+.win-risk{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;margin-bottom:5px}
+.win-desc{font-size:12px;color:var(--body);font-weight:300;line-height:1.55}
+.data-table{background:var(--bg2);border:1px solid var(--border);margin-bottom:20px;overflow:hidden}
+.dt-row{display:grid;grid-template-columns:110px 1fr 80px;border-bottom:1px solid var(--border);align-items:center}
+.dt-row:last-child{border-bottom:none}
+.dt-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);padding:9px 12px;letter-spacing:.5px}
+.dt-bar-wrap{padding:9px 10px}
+.dt-bar-track{height:5px;background:var(--border);overflow:hidden}
+.dt-bar-fill{height:100%;transition:width 1s ease-out}
+.dt-val{font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;padding:9px 12px;font-weight:500}
+.fcst-card{background:var(--bg2);border:1px solid var(--border);padding:18px;margin-bottom:20px}
+.fcst-text{font-size:13px;font-weight:300;line-height:1.8;color:var(--body)}
+.fcst-text strong{color:var(--white);font-weight:500}
+.disc{border-top:1px solid var(--border);padding-top:14px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);line-height:2;letter-spacing:.3px}
+.c-none{color:var(--green)}.c-marg{color:var(--lime)}.c-slight{color:var(--yellow)}
+.c-mod{color:var(--orange)}.c-high{color:var(--red)}.c-extreme{color:#ff40ff}.c-muted{color:var(--muted)}
+.b-none{background:var(--green)}.b-marg{background:var(--lime)}.b-slight{background:var(--yellow)}
+.b-mod{background:var(--orange)}.b-high{background:var(--red)}.b-extreme{background:#ff40ff}
+@media(max-width:600px){
+  .timeline{grid-template-columns:repeat(4,1fr)}
+  .idx-grid{grid-template-columns:repeat(2,1fr)}
+  .windows{grid-template-columns:1fr}
+  .prob-grid{grid-template-columns:1fr}
+  .prob-num{font-size:72px}
+  .brand-name{font-size:30px}
+}
+
+#ib{display:none;position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  left:12px;right:12px;background:#1a1e2a;border:1px solid #ff3b20;
+  padding:14px;z-index:999;flex-direction:row;align-items:flex-start;gap:12px;
+  box-shadow:0 -4px 30px rgba(0,0,0,.6);animation:slideUp .3s ease-out;}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+#ib-icon{font-size:24px;flex-shrink:0;margin-top:2px}
+#ib-body{flex:1}
+#ib-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:#e8f0ff;margin-bottom:4px}
+#ib-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a6887;line-height:1.7}
+#ib-sub span{color:#ff3b20}
+#ib-x{background:none;border:1px solid #2d3550;color:#5a6887;padding:6px 10px;font-size:13px;cursor:pointer;flex-shrink:0}
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">
+      <svg viewBox="0 0 44 44" fill="none">
+        <circle cx="22" cy="22" r="20" stroke="#ff3b20" stroke-width="1" opacity=".25"/>
+        <circle cx="22" cy="22" r="14" stroke="#ff3b20" stroke-width="1" opacity=".45"/>
+        <circle cx="22" cy="22" r="8"  stroke="#ff3b20" stroke-width="1.2" opacity=".75"/>
+        <path d="M22 3 L23.2 20 L22 22 L20.8 20Z" fill="#ff3b20"/>
+        <line x1="22" y1="3" x2="39" y2="22" stroke="#ff3b20" stroke-width=".8" opacity=".25"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">VORTEX</div>
+      <div class="brand-sub">24-Hour Tornado Forecast</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span class="live-dot"></span>LIVE DATA<br>
+    OPEN-METEO · NWS<br>
+    <span id="clockEl">—</span>
+  </div>
+</header>
+
+<div class="search-section">
+  <span class="search-label">// Enter location</span>
+  <div class="search-wrap">
+    <input type="text" class="search-input" id="addrInput"
+      placeholder="City, town, or ZIP code..." autocomplete="off" spellcheck="false"/>
+    <button class="search-btn" id="goBtn">🌪</button>
+    <div class="ac-list" id="acList"></div>
+  </div>
+</div>
+
+<div class="loading" id="loadingEl">
+  <div class="spinner"><div class="r r1"></div><div class="r r2"></div><div class="r r3"></div></div>
+  <div class="loading-title">SCANNING ATMOSPHERE</div>
+  <div class="loading-steps">
+    <div class="ls" id="s1">Geocoding location</div>
+    <div class="ls" id="s2">Fetching Open-Meteo atmospheric data</div>
+    <div class="ls" id="s3">Retrieving NWS alerts</div>
+    <div class="ls" id="s4">Computing convective indices (STP, SCP, SRH)</div>
+    <div class="ls" id="s5">Calculating hourly tornado probability</div>
+    <div class="ls" id="s6">Rendering 24-hour forecast</div>
+  </div>
+</div>
+
+<div class="error-box" id="errorEl"></div>
+
+<div class="results" id="resultsEl">
+  <div class="loc-strip">
+    <div>
+      <div class="loc-name" id="locNameEl">—</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px" id="locCoordsEl">—</div>
+    </div>
+    <div class="loc-meta" id="locMetaEl">—</div>
+  </div>
+  <div class="alert-bar" id="alertBar"></div>
+  <div class="prob-card" id="probCard">
+    <div class="prob-grid">
+      <div>
+        <div class="prob-lbl">// Peak 24hr Tornado Prob.</div>
+        <div class="prob-num" id="probNumEl">0<span class="prob-pct">%</span></div>
+        <div class="prob-track"><div class="prob-fill" id="probFillEl"></div></div>
+        <div class="prob-risk" id="probRiskEl">—</div>
+      </div>
+      <div>
+        <div class="prob-headline" id="probHeadlineEl">—</div>
+        <div class="prob-summary" id="probSummaryEl">—</div>
+        <div class="data-src">
+          <span class="ds live">OPEN-METEO LIVE</span>
+          <span class="ds live">NWS ALERTS</span>
+          <span class="ds">STP FORMULA</span>
+          <span class="ds">SPC METHOD</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sec">24-Hour Hourly Breakdown</div>
+  <div class="timeline" id="timelineEl"></div>
+  <div class="sec">Key Threat Windows</div>
+  <div class="windows" id="windowsEl"></div>
+  <div class="sec">Computed Convective Indices (peak hour)</div>
+  <div class="idx-grid" id="idxGridEl"></div>
+  <div class="sec">Raw Atmospheric Data</div>
+  <div class="data-table" id="dataTableEl"></div>
+  <div class="sec">Forecast Discussion</div>
+  <div class="fcst-card"><div class="fcst-text" id="fcstTextEl">—</div></div>
+  <div class="disc">
+    ⚠ VORTEX uses real atmospheric data from Open-Meteo (model blend) and NWS alerts.
+    Tornado probability is calculated using SPC's Significant Tornado Parameter formula and related indices.
+    This is a research/situational-awareness tool — NOT an official NWS forecast.
+    Always follow NWS, SPC, and local emergency management guidance for life-safety decisions.
+  </div>
+</div>
+
+</div>
+<script>
+'use strict';
+
+// Clock
+setInterval(function(){
+  var el=document.getElementById('clockEl');
+  if(el) el.textContent=new Date().toUTCString().slice(5,22)+' UTC';
+},1000);
+document.getElementById('clockEl').textContent=new Date().toUTCString().slice(5,22)+' UTC';
+
+// State
+var selLat=null,selLon=null,selName=null;
+var acTimer=null;
+var computedGlobal=[];
+
+// ── Search / Autocomplete ──
+var addrInput=document.getElementById('addrInput');
+var acList=document.getElementById('acList');
+var goBtn=document.getElementById('goBtn');
+
+goBtn.addEventListener('click',function(){ runForecast(); });
+addrInput.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){acList.classList.remove('open');runForecast();}
+  if(e.key==='Escape') acList.classList.remove('open');
+});
+addrInput.addEventListener('input',function(){
+  clearTimeout(acTimer);
+  var v=addrInput.value.trim();
+  if(v.length<3){acList.classList.remove('open');return;}
+  acTimer=setTimeout(function(){fetchAc(v);},350);
+});
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.search-wrap')) acList.classList.remove('open');
+});
+
+function fetchAc(q){
+  var url='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&limit=6&countrycodes=us&addressdetails=1';
+  fetch(url,{headers:{'Accept-Language':'en-US','User-Agent':'VortexWeather/1.0'}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      acList.innerHTML='';
+      if(!data||!data.length){acList.classList.remove('open');return;}
+      data.forEach(function(item){
+        var d=document.createElement('div');
+        d.className='ac-item';
+        var label=item.display_name.split(',').slice(0,4).join(',');
+        d.innerHTML='<span class="pin">📍</span><span>'+label+'</span>';
+        d.addEventListener('mousedown',function(e){e.preventDefault();});
+        d.addEventListener('click',function(){
+          selLat=parseFloat(item.lat);selLon=parseFloat(item.lon);selName=label;
+          addrInput.value=label;acList.classList.remove('open');runForecast();
+        });
+        acList.appendChild(d);
+      });
+      acList.classList.add('open');
+    })
+    .catch(function(){acList.classList.remove('open');});
+}
+
+// ── Step animation ──
+function setStep(n){
+  for(var i=1;i<=6;i++){
+    var el=document.getElementById('s'+i);
+    if(!el) continue;
+    el.className='ls'+(i<n?' done':i===n?' active':'');
+  }
+}
+
+// ── Safe fetch (returns null on failure) ──
+function safeFetch(url,opts){
+  return fetch(url,opts||{}).then(function(r){
+    if(!r.ok) return null;
+    return r.json();
+  }).catch(function(){return null;});
+}
+
+// ── Main forecast ──
+function runForecast(){
+  var input=addrInput.value.trim();
+  if(!input) return;
+
+  goBtn.disabled=true;
+  document.getElementById('resultsEl').classList.remove('on');
+  document.getElementById('errorEl').classList.remove('on');
+  document.getElementById('loadingEl').classList.add('on');
+  setStep(1);
+
+  var now=new Date();
+  var lat=selLat,lon=selLon,name=selName;
+
+  // Step 1: geocode if needed
+  var geoPromise;
+  if(lat && addrInput.value.trim()===(selName||'')){
+    geoPromise=Promise.resolve({lat:lat,lon:lon,name:name});
+  } else {
+    var geoUrl='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(input)+'&format=json&limit=1&countrycodes=us';
+    geoPromise=safeFetch(geoUrl,{headers:{'User-Agent':'VortexWeather/1.0'}}).then(function(data){
+      if(!data||!data.length) throw new Error('Location not found. Try a US city name or ZIP code.');
+      return {
+        lat:parseFloat(data[0].lat),
+        lon:parseFloat(data[0].lon),
+        name:data[0].display_name.split(',').slice(0,4).join(',')
+      };
+    });
+  }
+
+  geoPromise.then(function(geo){
+    lat=geo.lat; lon=geo.lon; name=geo.name;
+    selLat=lat; selLon=lon; selName=name;
+    setStep(2);
+
+    // Step 2: Open-Meteo
+    var vars=[
+      'cape','convective_inhibition','lifted_index',
+      'wind_speed_10m','wind_gusts_10m','wind_direction_10m',
+      'temperature_2m','dewpoint_2m','relative_humidity_2m',
+      'precipitation_probability','surface_pressure',
+      'wind_speed_80m','wind_direction_80m',
+      'wind_speed_120m','wind_direction_120m'
+    ].join(',');
+    var meteoUrl='https://api.open-meteo.com/v1/forecast?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)+'&hourly='+vars+'&wind_speed_unit=kn&forecast_days=2&timezone=auto';
+
+    return Promise.all([
+      safeFetch(meteoUrl),
+      (function(){
+        setStep(3);
+        return safeFetch('https://api.weather.gov/alerts/active?point='+lat.toFixed(4)+','+lon.toFixed(4),{headers:{'User-Agent':'VortexWeather/1.0'}});
+      })()
+    ]).then(function(results){
+      var meteo=results[0];
+      var alerts=results[1];
+      if(!meteo) throw new Error('Could not retrieve weather data. Check your connection and try again.');
+
+      setStep(4);
+      var hourly=extractHours(meteo,now,24);
+      var computed=hourly.map(function(h){return computeIndices(h);});
+      computedGlobal=computed;
+
+      setStep(5);
+      var probs=computed.map(function(c){return tornadoProb(c);});
+
+      setStep(6);
+      return new Promise(function(resolve){
+        setTimeout(function(){
+          render(name,lat,lon,now,hourly,computed,probs,alerts,meteo.timezone_abbreviation||'Local');
+          resolve();
+        },200);
+      });
+    });
+  }).catch(function(err){
+    showErr(err.message||String(err));
+  }).finally(function(){
+    document.getElementById('loadingEl').classList.remove('on');
+    goBtn.disabled=false;
+  });
+}
+
+// ── Extract next N hours ──
+function extractHours(meteo,now,n){
+  var times=meteo.hourly.time;
+  var keys=Object.keys(meteo.hourly).filter(function(k){return k!=='time';});
+  var nowMs=now.getTime();
+  var slots=[];
+  for(var i=0;i<times.length&&slots.length<n;i++){
+    if(new Date(times[i]).getTime()>=nowMs-1800000){
+      var s={time:times[i]};
+      keys.forEach(function(k){s[k]=meteo.hourly[k][i];});
+      slots.push(s);
+    }
+  }
+  return slots;
+}
+
+// ── Compute convective indices ──
+function computeIndices(h){
+  var cape=Math.max(0,h.cape||0);
+  var cin=Math.abs(h.convective_inhibition||0);
+  var li=h.lifted_index!=null?h.lifted_index:0;
+  var td=h.dewpoint_2m!=null?h.dewpoint_2m:10;
+  var t2m=h.temperature_2m!=null?h.temperature_2m:20;
+  var ws10=h.wind_speed_10m||0;
+  var ws80=h.wind_speed_80m||0;
+  var ws120=h.wind_speed_120m||0;
+  var wd10=h.wind_direction_10m||0;
+  var wd80=h.wind_direction_80m||0;
+  var wd120=h.wind_direction_120m||0;
+
+  // LCL height (Bolton 1980): 125 * (T - Td)
+  var lclHeight=Math.max(100,125*(t2m-td));
+
+  // Wind vectors
+  function toUV(spd,dir){
+    var rad=dir*Math.PI/180;
+    return {u:-spd*Math.sin(rad),v:-spd*Math.cos(rad)};
+  }
+  var v10=toUV(ws10,wd10);
+  var v80=toUV(ws80,wd80);
+  var v120=toUV(ws120,wd120);
+
+  // 0-1km shear proxy (scale 80m × 3)
+  var shear01=Math.sqrt(Math.pow((v80.u-v10.u)*3,2)+Math.pow((v80.v-v10.v)*3,2));
+  // 0-6km bulk shear proxy (scale 120m diff × 5)
+  var shear06=Math.sqrt(Math.pow((v120.u-v10.u)*5,2)+Math.pow((v120.v-v10.v)*5,2));
+
+  // SRH 0-1km estimate
+  var dirDiff=Math.abs(((wd80-wd10)+540)%360-180);
+  var dirFactor=dirDiff>20?1.5:1.0;
+  var srh01=Math.min(600,shear01*shear01*0.5*dirFactor);
+
+  // MLCAPE
+  var mlcape=cape*0.85;
+
+  // STP = (MLCAPE/1500) × (EBWD/40) × ((2000-MLLCL)/1000) × (SRH01/150)
+  var stpCape=mlcape/1500;
+  var stpShear=Math.min(1.5,shear06/40);
+  var stpLcl=Math.max(0,Math.min(1,(2000-lclHeight)/1000));
+  var stpSrh=srh01/150;
+  var stp=Math.max(0,stpCape*stpShear*stpLcl*stpSrh);
+
+  // SCP = (MUCAPE/1000) × (SRH01/50) × (EBWD/20)
+  var scp=Math.max(0,(cape/1000)*(srh01/50)*(shear06/20));
+
+  // EHI
+  var ehi=(cape*srh01)/160000;
+
+  return {
+    time:h.time,cape:cape,cin:cin,li:li,lclHeight:lclHeight,
+    td:td,t2m:t2m,shear01:shear01,shear06:shear06,
+    srh01:srh01,stp:stp,scp:scp,ehi:ehi,mlcape:mlcape,
+    ws10:ws10,ws80:ws80,precip:h.precipitation_probability||0,
+    gusts:h.wind_gusts_10m||0
+  };
+}
+
+// ── Tornado probability ──
+function tornadoProb(c){
+  if(c.cape<100) return 0;
+  var p=0;
+  // STP-based
+  if(c.stp>=4) p=55;
+  else if(c.stp>=3) p=40;
+  else if(c.stp>=2) p=28;
+  else if(c.stp>=1) p=15;
+  else if(c.stp>=0.5) p=7;
+  else if(c.stp>=0.2) p=2;
+  // SCP boost
+  if(c.scp>=8) p=Math.max(p,30);
+  else if(c.scp>=4) p=Math.max(p,15);
+  else if(c.scp>=2) p=Math.max(p,8);
+  // EHI boost
+  if(c.ehi>=3) p=Math.max(p,35);
+  else if(c.ehi>=2) p=Math.max(p,20);
+  else if(c.ehi>=1) p=Math.max(p,10);
+  // LCL modifier
+  if(c.lclHeight<500&&p>0) p*=1.3;
+  else if(c.lclHeight<1000&&p>0) p*=1.15;
+  // CIN suppression
+  if(c.cin>200) p*=0.1;
+  else if(c.cin>100) p*=0.4;
+  else if(c.cin>50) p*=0.75;
+  // CAPE boost
+  if(c.cape>3000&&p>0) p*=1.2;
+  // LI modifier
+  if(c.li>2) p*=0.3;
+  else if(c.li<-6) p*=1.1;
+  return Math.min(99,Math.max(0,Math.round(p)));
+}
+
+// ── Risk level ──
+function riskLevel(p){
+  if(p===0) return {level:'NONE',cls:'none',color:'var(--green)'};
+  if(p<5)  return {level:'NEAR ZERO',cls:'none',color:'var(--green)'};
+  if(p<10) return {level:'MARGINAL',cls:'marg',color:'var(--lime)'};
+  if(p<20) return {level:'SLIGHT',cls:'slight',color:'var(--yellow)'};
+  if(p<35) return {level:'MODERATE',cls:'mod',color:'var(--orange)'};
+  if(p<55) return {level:'HIGH',cls:'high',color:'var(--red)'};
+  return {level:'EXTREME',cls:'extreme',color:'#ff40ff'};
+}
+function pBg(p){return 'b-'+riskLevel(p).cls;}
+function pCl(p){return 'c-'+riskLevel(p).cls;}
+function riskTag(p){
+  if(p===0) return 'NONE';
+  if(p<5)  return 'NEAR 0';
+  if(p<10) return 'LOW';
+  if(p<25) return 'MOD';
+  if(p<50) return 'HIGH';
+  return 'EXTR';
+}
+
+// ── Render ──
+function render(name,lat,lon,now,hourly,computed,probs,alertsData,tz){
+  var peakProb=Math.max.apply(null,probs);
+  var peakIdx=probs.indexOf(peakProb);
+  var peakC=computed[peakIdx]||computed[0];
+  var risk=riskLevel(peakProb);
+
+  // Location
+  document.getElementById('locNameEl').textContent=name.split(',').slice(0,2).join(',');
+  document.getElementById('locCoordsEl').textContent=lat.toFixed(4)+'°N  '+lon.toFixed(4)+'°  '+tz;
+  document.getElementById('locMetaEl').innerHTML='Source: Open-Meteo + NWS<br>Valid: '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' – +24h';
+
+  // Alerts
+  var alertBar=document.getElementById('alertBar');
+  var sevAlerts=(alertsData&&alertsData.features)?alertsData.features.filter(function(f){
+    var ev=(f.properties&&f.properties.event||'').toLowerCase();
+    return ev.indexOf('tornado')>=0||ev.indexOf('severe')>=0||ev.indexOf('thunderstorm')>=0;
+  }):[];
+  if(sevAlerts.length){
+    var hasTorn=sevAlerts.some(function(f){return (f.properties.event||'').toLowerCase().indexOf('tornado')>=0;});
+    alertBar.className='alert-bar on'+(hasTorn?' tornado':'');
+    alertBar.innerHTML='⚠ '+sevAlerts.map(function(f){
+      return '<strong>'+f.properties.event+'</strong>: '+(f.properties.headline||'');
+    }).join('<br>');
+  }
+
+  // Prob card
+  var pc=document.getElementById('probCard');
+  pc.className='prob-card rk-'+risk.cls;
+  var numEl=document.getElementById('probNumEl');
+  numEl.className='prob-num c-'+risk.cls;
+  animNum(numEl,peakProb,'%');
+  var fillEl=document.getElementById('probFillEl');
+  fillEl.className='prob-fill '+pBg(peakProb);
+  setTimeout(function(){fillEl.style.width=Math.min(peakProb,100)+'%';},100);
+  document.getElementById('probRiskEl').innerHTML='<span class="c-'+risk.cls+'">'+risk.level+' RISK</span>';
+
+  var txt=makeForecastText(peakProb,peakC,probs,now,tz,sevAlerts);
+  document.getElementById('probHeadlineEl').textContent=txt.headline;
+  document.getElementById('probSummaryEl').textContent=txt.summary;
+
+  // Timeline
+  var tl=document.getElementById('timelineEl');
+  tl.innerHTML='';
+  var maxP=Math.max.apply(null,probs.concat([1]));
+  probs.forEach(function(p,i){
+    var t=new Date(hourly[i].time);
+    var hr=t.getHours(),ampm=hr>=12?'PM':'AM',hr12=hr%12||12;
+    var isPeak=p===peakProb&&p>0;
+    var isElev=p>=5&&!isPeak;
+    var div=document.createElement('div');
+    div.className='ts'+(isPeak?' peak':'')+(isElev?' warn':'');
+    div.innerHTML=
+      '<div class="ts-hr">'+hr12+ampm+'</div>'+
+      '<div class="ts-prob '+pCl(p)+'">'+p+'<span class="ts-pct">%</span></div>'+
+      '<div class="ts-bar"><div class="ts-fill '+pBg(p)+'" style="width:0%" data-w="'+(p/maxP*100).toFixed(1)+'"></div></div>'+
+      '<div class="ts-tag">'+riskTag(p)+'</div>'+
+      (isPeak?'<div class="ts-dot" style="background:var(--red)"></div>':'');
+    tl.appendChild(div);
+  });
+  setTimeout(function(){tl.querySelectorAll('.ts-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},100);
+
+  // Windows
+  var wins=buildWindows(probs,hourly,computed);
+  var wEl=document.getElementById('windowsEl');
+  if(wins.length){
+    wEl.innerHTML=wins.map(function(w){
+      var wr=riskLevel(w.maxProb);
+      return '<div class="win" style="border-color:'+wr.color+'55">'+
+        '<div class="win-time">'+w.timeRange+'</div>'+
+        '<div class="win-risk" style="color:'+wr.color+'">'+wr.level+'</div>'+
+        '<div class="win-desc">'+w.desc+'</div>'+
+        '</div>';
+    }).join('');
+  } else {
+    wEl.innerHTML='<div class="win"><div class="win-desc" style="color:var(--muted)">No significant tornado threat windows in the next 24 hours.</div></div>';
+  }
+
+  // Indices
+  var idxDefs=[
+    {abbr:'CAPE',name:'Convective Available Potential Energy',val:peakC.cape,unit:'J/kg',thresh:[500,1500,2500],max:4000},
+    {abbr:'STP', name:'Significant Tornado Parameter',       val:peakC.stp, unit:'',    thresh:[0.5,1,3],    max:5},
+    {abbr:'SCP', name:'Supercell Composite Parameter',       val:peakC.scp, unit:'',    thresh:[1,4,8],      max:10},
+    {abbr:'SHR6',name:'0–6km Bulk Wind Shear',              val:peakC.shear06,unit:'kts',thresh:[30,40,55], max:80},
+    {abbr:'LCL', name:'Lifted Condensation Level',          val:peakC.lclHeight,unit:'m',inv:true,          max:2500},
+    {abbr:'SRH', name:'0–1km Storm-Relative Helicity',      val:peakC.srh01,unit:'m²/s²',thresh:[100,150,300],max:400},
+  ];
+  var ig=document.getElementById('idxGridEl');
+  ig.innerHTML=idxDefs.map(function(d){
+    var v=d.val||0;
+    var disp=v>=100?Math.round(v).toLocaleString():parseFloat(v.toFixed(2)).toString();
+    var cc='c-muted',bc='',dotC='var(--muted)';
+    if(d.thresh){
+      if(v>=d.thresh[2])     {cc='c-high'; bc='b-high'; dotC='var(--red)';}
+      else if(v>=d.thresh[1]){cc='c-mod';  bc='b-mod';  dotC='var(--orange)';}
+      else if(v>=d.thresh[0]){cc='c-slight';bc='b-slight';dotC='var(--yellow)';}
+    } else if(d.inv){
+      if(v<800)      {cc='c-high'; bc='b-high'; dotC='var(--red)';}
+      else if(v<1200){cc='c-mod';  bc='b-mod';  dotC='var(--orange)';}
+      else if(v<1800){cc='c-slight';bc='b-slight';dotC='var(--yellow)';}
+    }
+    var pct=d.inv?Math.max(0,Math.min(100,(1-v/d.max)*100)):Math.min(100,v/d.max*100);
+    return '<div class="idx">'+
+      '<div class="idx-top"><div class="idx-abbr">'+d.abbr+'</div><div class="idx-dot" style="background:'+dotC+'"></div></div>'+
+      '<div class="idx-val '+cc+'">'+disp+'<span class="idx-unit"> '+d.unit+'</span></div>'+
+      '<div class="idx-name">'+d.name+'</div>'+
+      '<div class="idx-bar"><div class="idx-fill '+bc+'" style="width:0%" data-w="'+pct.toFixed(1)+'"></div></div>'+
+      '<div class="idx-thresh">'+threshText(d.abbr)+'</div>'+
+      '</div>';
+  }).join('');
+  setTimeout(function(){ig.querySelectorAll('.idx-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},200);
+
+  // Data table
+  var dt=document.getElementById('dataTableEl');
+  var rows=[
+    {label:'Peak CAPE',   val:Math.round(peakC.cape).toLocaleString()+' J/kg', pct:Math.min(100,peakC.cape/4000*100),      cc:pBg(peakProb)},
+    {label:'Peak Gusts',  val:Math.round(peakC.gusts)+' kts',                  pct:Math.min(100,peakC.gusts/80*100),        cc:'b-slight'},
+    {label:'Dewpoint',    val:peakC.td!=null?peakC.td.toFixed(1)+'°C':'—',     pct:Math.min(100,Math.max(0,(peakC.td+10)/30*100)),cc:'b-slight'},
+    {label:'0-6km Shear', val:Math.round(peakC.shear06)+' kts',                pct:Math.min(100,peakC.shear06/80*100),      cc:'b-mod'},
+    {label:'SRH 0-1km',   val:Math.round(peakC.srh01)+' m²/s²',               pct:Math.min(100,peakC.srh01/400*100),       cc:pBg(peakProb)},
+    {label:'LCL Height',  val:Math.round(peakC.lclHeight).toLocaleString()+' m',pct:Math.max(0,100-peakC.lclHeight/2500*100),cc:'b-mod'},
+    {label:'CIN',         val:Math.round(peakC.cin)+' J/kg',                   pct:Math.max(0,100-peakC.cin/200*100),       cc:'b-slight'},
+    {label:'Precip Prob', val:peakC.precip+'%',                                 pct:peakC.precip,                            cc:'b-slight'},
+  ];
+  dt.innerHTML=rows.map(function(row){
+    return '<div class="dt-row">'+
+      '<div class="dt-label">'+row.label+'</div>'+
+      '<div class="dt-bar-wrap"><div class="dt-bar-track"><div class="dt-bar-fill '+row.cc+'" style="width:0%" data-w="'+row.pct.toFixed(1)+'"></div></div></div>'+
+      '<div class="dt-val">'+row.val+'</div>'+
+      '</div>';
+  }).join('');
+  setTimeout(function(){dt.querySelectorAll('.dt-bar-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},300);
+
+  // Discussion
+  document.getElementById('fcstTextEl').innerHTML=txt.discussion;
+
+  document.getElementById('resultsEl').classList.add('on');
+  document.getElementById('resultsEl').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── Build threat windows ──
+function buildWindows(probs,hourly,computed){
+  var wins=[]; var i=0;
+  while(i<probs.length){
+    if(probs[i]>=5){
+      var j=i;
+      while(j<probs.length&&probs[j]>=3) j++;
+      var slice=probs.slice(i,j);
+      var maxP=Math.max.apply(null,slice);
+      var maxI=i+slice.indexOf(maxP);
+      var startT=new Date(hourly[i].time);
+      var endT=new Date(hourly[Math.min(j,hourly.length-1)].time);
+      var fmt=function(t){return t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});};
+      wins.push({
+        timeRange:fmt(startT)+' – '+fmt(endT),
+        maxProb:maxP,
+        desc:winDesc(maxP,computed[maxI])
+      });
+      i=j;
+    } else { i++; }
+  }
+  return wins.slice(0,3);
+}
+
+function winDesc(p,c){
+  if(!c) return 'Elevated convective potential during this period.';
+  var parts=[];
+  if(c.cape>2000) parts.push('strong atmospheric instability (CAPE >2000 J/kg)');
+  else if(c.cape>800) parts.push('moderate instability');
+  if(c.shear06>50) parts.push('significant 0-6km wind shear');
+  else if(c.shear06>35) parts.push('favorable wind shear for supercells');
+  if(c.lclHeight<1000) parts.push('very low cloud bases (<1000m)');
+  else if(c.lclHeight<1400) parts.push('low cloud bases favorable for tornadoes');
+  if(c.srh01>150) parts.push('high storm-relative helicity');
+  if(!parts.length) parts.push('marginal but nonzero convective parameters');
+  return 'Conditions feature '+parts.join(', ')+'.';
+}
+
+// ── Forecast text ──
+function makeForecastText(peak,c,probs,now,tz,alerts){
+  var r=riskLevel(peak);
+  var peakHour=new Date(c.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var headline,summary,discussion;
+
+  if(peak===0){
+    headline='No tornado threat in the next 24 hours';
+    summary='Atmospheric conditions do not support tornado development. Instability and wind shear values are below convective thresholds.';
+    discussion='<strong>Forecast Discussion:</strong> The atmosphere at this location shows no meaningful convective potential over the next 24 hours. '+
+      'CAPE values remain near or below 100 J/kg — insufficient energy for sustained deep convection. '+
+      'Wind shear and SRH values are well below tornado-supportive thresholds. Tornado probability is effectively zero for this forecast period.';
+  } else {
+    if(peak<5) headline='Near-zero tornado probability';
+    else if(peak<15) headline='Low-end tornado threat possible';
+    else if(peak<30) headline='Organized tornado threat — monitor conditions';
+    else if(peak<50) headline='Significant tornado threat — stay alert';
+    else headline='⚠ MAJOR tornado threat — take shelter';
+
+    if(peak<5) summary='A very slight chance of thunderstorms exists but tornado potential is extremely low. Atmospheric conditions are only marginally supportive.';
+    else if(peak<15) summary='A marginal tornado threat exists during the peak window. Conditions may support brief, weak tornadoes if discrete storms develop.';
+    else if(peak<30) summary='A SLIGHT to MODERATE tornado risk exists. Atmospheric parameters support supercell development. Stay weather-aware and monitor local alerts.';
+    else if(peak<50) summary='A HIGH tornado risk exists. Conditions strongly favor supercell thunderstorms with significant tornado potential. Have a shelter plan ready now.';
+    else summary='An EXTREME tornado risk exists. Atmospheric parameters are at severe-outbreak levels. Violent tornadoes are possible — take action immediately.';
+
+    discussion=buildDiscussion(peak,c,peakHour,alerts);
+  }
+  return {headline:headline,summary:summary,discussion:discussion};
+}
+
+function buildDiscussion(peak,c,peakHour,alerts){
+  var r=riskLevel(peak);
+  var d='<strong>Forecast Discussion (computed from Open-Meteo live data):</strong><br><br>';
+  d+='Peak tornado probability of <strong>'+peak+'%</strong> ('+r.level+' risk) is forecast for the period, ';
+  d+='with maximum values expected around <strong>'+peakHour+'</strong>. ';
+  if(c.cape>0){
+    d+='Convective Available Potential Energy (CAPE) is <strong>'+Math.round(c.cape).toLocaleString()+' J/kg</strong> — ';
+    d+=c.cape>2000?'indicating very strong atmospheric instability supportive of severe thunderstorms. ':
+       c.cape>800 ?'indicating moderate instability supportive of convection. ':
+                   'indicating limited instability that may constrain storm development. ';
+  }
+  if(c.shear06>0){
+    d+='0–6km bulk wind shear is estimated at <strong>'+Math.round(c.shear06)+' knots</strong>, ';
+    d+=c.shear06>50?'which is well above supercell thresholds and highly favorable for organized severe weather. ':
+       c.shear06>35?'meeting the threshold for supercell thunderstorm development. ':
+                    'which is marginal for supercell organization. ';
+  }
+  d+='The Significant Tornado Parameter (STP) is <strong>'+c.stp.toFixed(2)+'</strong>';
+  d+=c.stp>=2?' — well above the significant tornado threshold of 1.0. ':
+     c.stp>=1?' — meeting the significant tornado threshold. ':
+     c.stp>=0.5?' — approaching but below the significant tornado threshold. ':
+                ' — below tornado-supportive thresholds. ';
+  if(c.lclHeight<1500){
+    d+='Cloud bases (LCL ~<strong>'+Math.round(c.lclHeight)+' m</strong>) are ';
+    d+=c.lclHeight<800?'very low, which strongly favors tornado formation. ':
+                       'low, which is generally favorable for tornado potential. ';
+  }
+  if(c.cin>100) d+='Convective inhibition (CIN ~<strong>'+Math.round(c.cin)+' J/kg</strong>) is significant and may suppress storm initiation. ';
+  if(alerts.length) d+='<br><br>⚠ <strong>NWS has issued active weather alerts for this area.</strong> Check local NWS office for official watches and warnings.';
+  d+='<br><br><em>Indices computed using SPC Significant Tornado Parameter formula. Wind shear estimated from Open-Meteo multi-level winds. This tool is for situational awareness only.</em>';
+  return d;
+}
+
+function threshText(abbr){
+  var map={
+    'STP':'Significant tornado: ≥ 1.0',
+    'SCP':'Supercell: ≥ 1.0',
+    'CAPE':'Strong instability: > 2000 J/kg',
+    'SHR6':'Supercell shear: ≥ 40 kts',
+    'LCL':'Tornado-favorable: < 1000 m',
+    'SRH':'Significant tornado: > 150 m²/s²'
+  };
+  return map[abbr]||'';
+}
+
+function animNum(el,target,suffix){
+  var cur=0;
+  function go(){
+    cur=Math.min(cur+Math.max(1,Math.ceil((target-cur)/7)),target);
+    el.innerHTML=cur+'<span class="prob-pct">'+suffix+'</span>';
+    if(cur<target) requestAnimationFrame(go);
+  }
+  requestAnimationFrame(go);
+}
+
+function showErr(msg){
+  document.getElementById('loadingEl').classList.remove('on');
+  var el=document.getElementById('errorEl');
+  el.innerHTML='⚠ '+msg;
+  el.classList.add('on');
+  document.getElementById('goBtn').disabled=false;
+}
+</script>
+
+<div id="ib">
+  <div id="ib-icon">📲</div>
+  <div id="ib-body">
+    <div id="ib-title">Add to Home Screen</div>
+    <div id="ib-sub">1. Tap <span>Share ⬆</span> in Safari<br>2. Tap <span>"Add to Home Screen"</span><br>3. Tap <span>Add</span> — done 🌪</div>
+  </div>
+  <button id="ib-x" onclick="dismissBanner()">✕</button>
+</div>
+
+<script>
+
+'use strict';
+
+// Clock
+setInterval(function(){
+  var el=document.getElementById('clockEl');
+  if(el) el.textContent=new Date().toUTCString().slice(5,22)+' UTC';
+},1000);
+document.getElementById('clockEl').textContent=new Date().toUTCString().slice(5,22)+' UTC';
+
+// State
+var selLat=null,selLon=null,selName=null;
+var acTimer=null;
+var computedGlobal=[];
+
+// ── Search / Autocomplete ──
+var addrInput=document.getElementById('addrInput');
+var acList=document.getElementById('acList');
+var goBtn=document.getElementById('goBtn');
+
+goBtn.addEventListener('click',function(){ runForecast(); });
+addrInput.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){acList.classList.remove('open');runForecast();}
+  if(e.key==='Escape') acList.classList.remove('open');
+});
+addrInput.addEventListener('input',function(){
+  clearTimeout(acTimer);
+  var v=addrInput.value.trim();
+  if(v.length<3){acList.classList.remove('open');return;}
+  acTimer=setTimeout(function(){fetchAc(v);},350);
+});
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.search-wrap')) acList.classList.remove('open');
+});
+
+function fetchAc(q){
+  var url='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q)+'&format=json&limit=6&countrycodes=us&addressdetails=1';
+  fetch(url,{headers:{'Accept-Language':'en-US','User-Agent':'VortexWeather/1.0'}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      acList.innerHTML='';
+      if(!data||!data.length){acList.classList.remove('open');return;}
+      data.forEach(function(item){
+        var d=document.createElement('div');
+        d.className='ac-item';
+        var label=item.display_name.split(',').slice(0,4).join(',');
+        d.innerHTML='<span class="pin">📍</span><span>'+label+'</span>';
+        d.addEventListener('mousedown',function(e){e.preventDefault();});
+        d.addEventListener('click',function(){
+          selLat=parseFloat(item.lat);selLon=parseFloat(item.lon);selName=label;
+          addrInput.value=label;acList.classList.remove('open');runForecast();
+        });
+        acList.appendChild(d);
+      });
+      acList.classList.add('open');
+    })
+    .catch(function(){acList.classList.remove('open');});
+}
+
+// ── Step animation ──
+function setStep(n){
+  for(var i=1;i<=6;i++){
+    var el=document.getElementById('s'+i);
+    if(!el) continue;
+    el.className='ls'+(i<n?' done':i===n?' active':'');
+  }
+}
+
+// ── Safe fetch (returns null on failure) ──
+function safeFetch(url,opts){
+  return fetch(url,opts||{}).then(function(r){
+    if(!r.ok) return null;
+    return r.json();
+  }).catch(function(){return null;});
+}
+
+// ── Main forecast ──
+function runForecast(){
+  var input=addrInput.value.trim();
+  if(!input) return;
+
+  goBtn.disabled=true;
+  document.getElementById('resultsEl').classList.remove('on');
+  document.getElementById('errorEl').classList.remove('on');
+  document.getElementById('loadingEl').classList.add('on');
+  setStep(1);
+
+  var now=new Date();
+  var lat=selLat,lon=selLon,name=selName;
+
+  // Step 1: geocode if needed
+  var geoPromise;
+  if(lat && addrInput.value.trim()===(selName||'')){
+    geoPromise=Promise.resolve({lat:lat,lon:lon,name:name});
+  } else {
+    var geoUrl='https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(input)+'&format=json&limit=1&countrycodes=us';
+    geoPromise=safeFetch(geoUrl,{headers:{'User-Agent':'VortexWeather/1.0'}}).then(function(data){
+      if(!data||!data.length) throw new Error('Location not found. Try a US city name or ZIP code.');
+      return {
+        lat:parseFloat(data[0].lat),
+        lon:parseFloat(data[0].lon),
+        name:data[0].display_name.split(',').slice(0,4).join(',')
+      };
+    });
+  }
+
+  geoPromise.then(function(geo){
+    lat=geo.lat; lon=geo.lon; name=geo.name;
+    selLat=lat; selLon=lon; selName=name;
+    setStep(2);
+
+    // Step 2: Open-Meteo
+    var vars=[
+      'cape','convective_inhibition','lifted_index',
+      'wind_speed_10m','wind_gusts_10m','wind_direction_10m',
+      'temperature_2m','dewpoint_2m','relative_humidity_2m',
+      'precipitation_probability','surface_pressure',
+      'wind_speed_80m','wind_direction_80m',
+      'wind_speed_120m','wind_direction_120m'
+    ].join(',');
+    var meteoUrl='https://api.open-meteo.com/v1/forecast?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4)+'&hourly='+vars+'&wind_speed_unit=kn&forecast_days=2&timezone=auto';
+
+    return Promise.all([
+      safeFetch(meteoUrl),
+      (function(){
+        setStep(3);
+        return safeFetch('https://api.weather.gov/alerts/active?point='+lat.toFixed(4)+','+lon.toFixed(4),{headers:{'User-Agent':'VortexWeather/1.0'}});
+      })()
+    ]).then(function(results){
+      var meteo=results[0];
+      var alerts=results[1];
+      if(!meteo) throw new Error('Could not retrieve weather data. Check your connection and try again.');
+
+      setStep(4);
+      var hourly=extractHours(meteo,now,24);
+      var computed=hourly.map(function(h){return computeIndices(h);});
+      computedGlobal=computed;
+
+      setStep(5);
+      var probs=computed.map(function(c){return tornadoProb(c);});
+
+      setStep(6);
+      return new Promise(function(resolve){
+        setTimeout(function(){
+          render(name,lat,lon,now,hourly,computed,probs,alerts,meteo.timezone_abbreviation||'Local');
+          resolve();
+        },200);
+      });
+    });
+  }).catch(function(err){
+    showErr(err.message||String(err));
+  }).finally(function(){
+    document.getElementById('loadingEl').classList.remove('on');
+    goBtn.disabled=false;
+  });
+}
+
+// ── Extract next N hours ──
+function extractHours(meteo,now,n){
+  var times=meteo.hourly.time;
+  var keys=Object.keys(meteo.hourly).filter(function(k){return k!=='time';});
+  var nowMs=now.getTime();
+  var slots=[];
+  for(var i=0;i<times.length&&slots.length<n;i++){
+    if(new Date(times[i]).getTime()>=nowMs-1800000){
+      var s={time:times[i]};
+      keys.forEach(function(k){s[k]=meteo.hourly[k][i];});
+      slots.push(s);
+    }
+  }
+  return slots;
+}
+
+// ── Compute convective indices ──
+function computeIndices(h){
+  var cape=Math.max(0,h.cape||0);
+  var cin=Math.abs(h.convective_inhibition||0);
+  var li=h.lifted_index!=null?h.lifted_index:0;
+  var td=h.dewpoint_2m!=null?h.dewpoint_2m:10;
+  var t2m=h.temperature_2m!=null?h.temperature_2m:20;
+  var ws10=h.wind_speed_10m||0;
+  var ws80=h.wind_speed_80m||0;
+  var ws120=h.wind_speed_120m||0;
+  var wd10=h.wind_direction_10m||0;
+  var wd80=h.wind_direction_80m||0;
+  var wd120=h.wind_direction_120m||0;
+
+  // LCL height (Bolton 1980): 125 * (T - Td)
+  var lclHeight=Math.max(100,125*(t2m-td));
+
+  // Wind vectors
+  function toUV(spd,dir){
+    var rad=dir*Math.PI/180;
+    return {u:-spd*Math.sin(rad),v:-spd*Math.cos(rad)};
+  }
+  var v10=toUV(ws10,wd10);
+  var v80=toUV(ws80,wd80);
+  var v120=toUV(ws120,wd120);
+
+  // 0-1km shear proxy (scale 80m × 3)
+  var shear01=Math.sqrt(Math.pow((v80.u-v10.u)*3,2)+Math.pow((v80.v-v10.v)*3,2));
+  // 0-6km bulk shear proxy (scale 120m diff × 5)
+  var shear06=Math.sqrt(Math.pow((v120.u-v10.u)*5,2)+Math.pow((v120.v-v10.v)*5,2));
+
+  // SRH 0-1km estimate
+  var dirDiff=Math.abs(((wd80-wd10)+540)%360-180);
+  var dirFactor=dirDiff>20?1.5:1.0;
+  var srh01=Math.min(600,shear01*shear01*0.5*dirFactor);
+
+  // MLCAPE
+  var mlcape=cape*0.85;
+
+  // STP = (MLCAPE/1500) × (EBWD/40) × ((2000-MLLCL)/1000) × (SRH01/150)
+  var stpCape=mlcape/1500;
+  var stpShear=Math.min(1.5,shear06/40);
+  var stpLcl=Math.max(0,Math.min(1,(2000-lclHeight)/1000));
+  var stpSrh=srh01/150;
+  var stp=Math.max(0,stpCape*stpShear*stpLcl*stpSrh);
+
+  // SCP = (MUCAPE/1000) × (SRH01/50) × (EBWD/20)
+  var scp=Math.max(0,(cape/1000)*(srh01/50)*(shear06/20));
+
+  // EHI
+  var ehi=(cape*srh01)/160000;
+
+  return {
+    time:h.time,cape:cape,cin:cin,li:li,lclHeight:lclHeight,
+    td:td,t2m:t2m,shear01:shear01,shear06:shear06,
+    srh01:srh01,stp:stp,scp:scp,ehi:ehi,mlcape:mlcape,
+    ws10:ws10,ws80:ws80,precip:h.precipitation_probability||0,
+    gusts:h.wind_gusts_10m||0
+  };
+}
+
+// ── Tornado probability ──
+function tornadoProb(c){
+  if(c.cape<100) return 0;
+  var p=0;
+  // STP-based
+  if(c.stp>=4) p=55;
+  else if(c.stp>=3) p=40;
+  else if(c.stp>=2) p=28;
+  else if(c.stp>=1) p=15;
+  else if(c.stp>=0.5) p=7;
+  else if(c.stp>=0.2) p=2;
+  // SCP boost
+  if(c.scp>=8) p=Math.max(p,30);
+  else if(c.scp>=4) p=Math.max(p,15);
+  else if(c.scp>=2) p=Math.max(p,8);
+  // EHI boost
+  if(c.ehi>=3) p=Math.max(p,35);
+  else if(c.ehi>=2) p=Math.max(p,20);
+  else if(c.ehi>=1) p=Math.max(p,10);
+  // LCL modifier
+  if(c.lclHeight<500&&p>0) p*=1.3;
+  else if(c.lclHeight<1000&&p>0) p*=1.15;
+  // CIN suppression
+  if(c.cin>200) p*=0.1;
+  else if(c.cin>100) p*=0.4;
+  else if(c.cin>50) p*=0.75;
+  // CAPE boost
+  if(c.cape>3000&&p>0) p*=1.2;
+  // LI modifier
+  if(c.li>2) p*=0.3;
+  else if(c.li<-6) p*=1.1;
+  return Math.min(99,Math.max(0,Math.round(p)));
+}
+
+// ── Risk level ──
+function riskLevel(p){
+  if(p===0) return {level:'NONE',cls:'none',color:'var(--green)'};
+  if(p<5)  return {level:'NEAR ZERO',cls:'none',color:'var(--green)'};
+  if(p<10) return {level:'MARGINAL',cls:'marg',color:'var(--lime)'};
+  if(p<20) return {level:'SLIGHT',cls:'slight',color:'var(--yellow)'};
+  if(p<35) return {level:'MODERATE',cls:'mod',color:'var(--orange)'};
+  if(p<55) return {level:'HIGH',cls:'high',color:'var(--red)'};
+  return {level:'EXTREME',cls:'extreme',color:'#ff40ff'};
+}
+function pBg(p){return 'b-'+riskLevel(p).cls;}
+function pCl(p){return 'c-'+riskLevel(p).cls;}
+function riskTag(p){
+  if(p===0) return 'NONE';
+  if(p<5)  return 'NEAR 0';
+  if(p<10) return 'LOW';
+  if(p<25) return 'MOD';
+  if(p<50) return 'HIGH';
+  return 'EXTR';
+}
+
+// ── Render ──
+function render(name,lat,lon,now,hourly,computed,probs,alertsData,tz){
+  var peakProb=Math.max.apply(null,probs);
+  var peakIdx=probs.indexOf(peakProb);
+  var peakC=computed[peakIdx]||computed[0];
+  var risk=riskLevel(peakProb);
+
+  // Location
+  document.getElementById('locNameEl').textContent=name.split(',').slice(0,2).join(',');
+  document.getElementById('locCoordsEl').textContent=lat.toFixed(4)+'°N  '+lon.toFixed(4)+'°  '+tz;
+  document.getElementById('locMetaEl').innerHTML='Source: Open-Meteo + NWS<br>Valid: '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' – +24h';
+
+  // Alerts
+  var alertBar=document.getElementById('alertBar');
+  var sevAlerts=(alertsData&&alertsData.features)?alertsData.features.filter(function(f){
+    var ev=(f.properties&&f.properties.event||'').toLowerCase();
+    return ev.indexOf('tornado')>=0||ev.indexOf('severe')>=0||ev.indexOf('thunderstorm')>=0;
+  }):[];
+  if(sevAlerts.length){
+    var hasTorn=sevAlerts.some(function(f){return (f.properties.event||'').toLowerCase().indexOf('tornado')>=0;});
+    alertBar.className='alert-bar on'+(hasTorn?' tornado':'');
+    alertBar.innerHTML='⚠ '+sevAlerts.map(function(f){
+      return '<strong>'+f.properties.event+'</strong>: '+(f.properties.headline||'');
+    }).join('<br>');
+  }
+
+  // Prob card
+  var pc=document.getElementById('probCard');
+  pc.className='prob-card rk-'+risk.cls;
+  var numEl=document.getElementById('probNumEl');
+  numEl.className='prob-num c-'+risk.cls;
+  animNum(numEl,peakProb,'%');
+  var fillEl=document.getElementById('probFillEl');
+  fillEl.className='prob-fill '+pBg(peakProb);
+  setTimeout(function(){fillEl.style.width=Math.min(peakProb,100)+'%';},100);
+  document.getElementById('probRiskEl').innerHTML='<span class="c-'+risk.cls+'">'+risk.level+' RISK</span>';
+
+  var txt=makeForecastText(peakProb,peakC,probs,now,tz,sevAlerts);
+  document.getElementById('probHeadlineEl').textContent=txt.headline;
+  document.getElementById('probSummaryEl').textContent=txt.summary;
+
+  // Timeline
+  var tl=document.getElementById('timelineEl');
+  tl.innerHTML='';
+  var maxP=Math.max.apply(null,probs.concat([1]));
+  probs.forEach(function(p,i){
+    var t=new Date(hourly[i].time);
+    var hr=t.getHours(),ampm=hr>=12?'PM':'AM',hr12=hr%12||12;
+    var isPeak=p===peakProb&&p>0;
+    var isElev=p>=5&&!isPeak;
+    var div=document.createElement('div');
+    div.className='ts'+(isPeak?' peak':'')+(isElev?' warn':'');
+    div.innerHTML=
+      '<div class="ts-hr">'+hr12+ampm+'</div>'+
+      '<div class="ts-prob '+pCl(p)+'">'+p+'<span class="ts-pct">%</span></div>'+
+      '<div class="ts-bar"><div class="ts-fill '+pBg(p)+'" style="width:0%" data-w="'+(p/maxP*100).toFixed(1)+'"></div></div>'+
+      '<div class="ts-tag">'+riskTag(p)+'</div>'+
+      (isPeak?'<div class="ts-dot" style="background:var(--red)"></div>':'');
+    tl.appendChild(div);
+  });
+  setTimeout(function(){tl.querySelectorAll('.ts-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},100);
+
+  // Windows
+  var wins=buildWindows(probs,hourly,computed);
+  var wEl=document.getElementById('windowsEl');
+  if(wins.length){
+    wEl.innerHTML=wins.map(function(w){
+      var wr=riskLevel(w.maxProb);
+      return '<div class="win" style="border-color:'+wr.color+'55">'+
+        '<div class="win-time">'+w.timeRange+'</div>'+
+        '<div class="win-risk" style="color:'+wr.color+'">'+wr.level+'</div>'+
+        '<div class="win-desc">'+w.desc+'</div>'+
+        '</div>';
+    }).join('');
+  } else {
+    wEl.innerHTML='<div class="win"><div class="win-desc" style="color:var(--muted)">No significant tornado threat windows in the next 24 hours.</div></div>';
+  }
+
+  // Indices
+  var idxDefs=[
+    {abbr:'CAPE',name:'Convective Available Potential Energy',val:peakC.cape,unit:'J/kg',thresh:[500,1500,2500],max:4000},
+    {abbr:'STP', name:'Significant Tornado Parameter',       val:peakC.stp, unit:'',    thresh:[0.5,1,3],    max:5},
+    {abbr:'SCP', name:'Supercell Composite Parameter',       val:peakC.scp, unit:'',    thresh:[1,4,8],      max:10},
+    {abbr:'SHR6',name:'0–6km Bulk Wind Shear',              val:peakC.shear06,unit:'kts',thresh:[30,40,55], max:80},
+    {abbr:'LCL', name:'Lifted Condensation Level',          val:peakC.lclHeight,unit:'m',inv:true,          max:2500},
+    {abbr:'SRH', name:'0–1km Storm-Relative Helicity',      val:peakC.srh01,unit:'m²/s²',thresh:[100,150,300],max:400},
+  ];
+  var ig=document.getElementById('idxGridEl');
+  ig.innerHTML=idxDefs.map(function(d){
+    var v=d.val||0;
+    var disp=v>=100?Math.round(v).toLocaleString():parseFloat(v.toFixed(2)).toString();
+    var cc='c-muted',bc='',dotC='var(--muted)';
+    if(d.thresh){
+      if(v>=d.thresh[2])     {cc='c-high'; bc='b-high'; dotC='var(--red)';}
+      else if(v>=d.thresh[1]){cc='c-mod';  bc='b-mod';  dotC='var(--orange)';}
+      else if(v>=d.thresh[0]){cc='c-slight';bc='b-slight';dotC='var(--yellow)';}
+    } else if(d.inv){
+      if(v<800)      {cc='c-high'; bc='b-high'; dotC='var(--red)';}
+      else if(v<1200){cc='c-mod';  bc='b-mod';  dotC='var(--orange)';}
+      else if(v<1800){cc='c-slight';bc='b-slight';dotC='var(--yellow)';}
+    }
+    var pct=d.inv?Math.max(0,Math.min(100,(1-v/d.max)*100)):Math.min(100,v/d.max*100);
+    return '<div class="idx">'+
+      '<div class="idx-top"><div class="idx-abbr">'+d.abbr+'</div><div class="idx-dot" style="background:'+dotC+'"></div></div>'+
+      '<div class="idx-val '+cc+'">'+disp+'<span class="idx-unit"> '+d.unit+'</span></div>'+
+      '<div class="idx-name">'+d.name+'</div>'+
+      '<div class="idx-bar"><div class="idx-fill '+bc+'" style="width:0%" data-w="'+pct.toFixed(1)+'"></div></div>'+
+      '<div class="idx-thresh">'+threshText(d.abbr)+'</div>'+
+      '</div>';
+  }).join('');
+  setTimeout(function(){ig.querySelectorAll('.idx-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},200);
+
+  // Data table
+  var dt=document.getElementById('dataTableEl');
+  var rows=[
+    {label:'Peak CAPE',   val:Math.round(peakC.cape).toLocaleString()+' J/kg', pct:Math.min(100,peakC.cape/4000*100),      cc:pBg(peakProb)},
+    {label:'Peak Gusts',  val:Math.round(peakC.gusts)+' kts',                  pct:Math.min(100,peakC.gusts/80*100),        cc:'b-slight'},
+    {label:'Dewpoint',    val:peakC.td!=null?peakC.td.toFixed(1)+'°C':'—',     pct:Math.min(100,Math.max(0,(peakC.td+10)/30*100)),cc:'b-slight'},
+    {label:'0-6km Shear', val:Math.round(peakC.shear06)+' kts',                pct:Math.min(100,peakC.shear06/80*100),      cc:'b-mod'},
+    {label:'SRH 0-1km',   val:Math.round(peakC.srh01)+' m²/s²',               pct:Math.min(100,peakC.srh01/400*100),       cc:pBg(peakProb)},
+    {label:'LCL Height',  val:Math.round(peakC.lclHeight).toLocaleString()+' m',pct:Math.max(0,100-peakC.lclHeight/2500*100),cc:'b-mod'},
+    {label:'CIN',         val:Math.round(peakC.cin)+' J/kg',                   pct:Math.max(0,100-peakC.cin/200*100),       cc:'b-slight'},
+    {label:'Precip Prob', val:peakC.precip+'%',                                 pct:peakC.precip,                            cc:'b-slight'},
+  ];
+  dt.innerHTML=rows.map(function(row){
+    return '<div class="dt-row">'+
+      '<div class="dt-label">'+row.label+'</div>'+
+      '<div class="dt-bar-wrap"><div class="dt-bar-track"><div class="dt-bar-fill '+row.cc+'" style="width:0%" data-w="'+row.pct.toFixed(1)+'"></div></div></div>'+
+      '<div class="dt-val">'+row.val+'</div>'+
+      '</div>';
+  }).join('');
+  setTimeout(function(){dt.querySelectorAll('.dt-bar-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},300);
+
+  // Discussion
+  document.getElementById('fcstTextEl').innerHTML=txt.discussion;
+
+  document.getElementById('resultsEl').classList.add('on');
+  document.getElementById('resultsEl').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── Build threat windows ──
+function buildWindows(probs,hourly,computed){
+  var wins=[]; var i=0;
+  while(i<probs.length){
+    if(probs[i]>=5){
+      var j=i;
+      while(j<probs.length&&probs[j]>=3) j++;
+      var slice=probs.slice(i,j);
+      var maxP=Math.max.apply(null,slice);
+      var maxI=i+slice.indexOf(maxP);
+      var startT=new Date(hourly[i].time);
+      var endT=new Date(hourly[Math.min(j,hourly.length-1)].time);
+      var fmt=function(t){return t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});};
+      wins.push({
+        timeRange:fmt(startT)+' – '+fmt(endT),
+        maxProb:maxP,
+        desc:winDesc(maxP,computed[maxI])
+      });
+      i=j;
+    } else { i++; }
+  }
+  return wins.slice(0,3);
+}
+
+function winDesc(p,c){
+  if(!c) return 'Elevated convective potential during this period.';
+  var parts=[];
+  if(c.cape>2000) parts.push('strong atmospheric instability (CAPE >2000 J/kg)');
+  else if(c.cape>800) parts.push('moderate instability');
+  if(c.shear06>50) parts.push('significant 0-6km wind shear');
+  else if(c.shear06>35) parts.push('favorable wind shear for supercells');
+  if(c.lclHeight<1000) parts.push('very low cloud bases (<1000m)');
+  else if(c.lclHeight<1400) parts.push('low cloud bases favorable for tornadoes');
+  if(c.srh01>150) parts.push('high storm-relative helicity');
+  if(!parts.length) parts.push('marginal but nonzero convective parameters');
+  return 'Conditions feature '+parts.join(', ')+'.';
+}
+
+// ── Forecast text ──
+function makeForecastText(peak,c,probs,now,tz,alerts){
+  var r=riskLevel(peak);
+  var peakHour=new Date(c.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  var headline,summary,discussion;
+
+  if(peak===0){
+    headline='No tornado threat in the next 24 hours';
+    summary='Atmospheric conditions do not support tornado development. Instability and wind shear values are below convective thresholds.';
+    discussion='<strong>Forecast Discussion:</strong> The atmosphere at this location shows no meaningful convective potential over the next 24 hours. '+
+      'CAPE values remain near or below 100 J/kg — insufficient energy for sustained deep convection. '+
+      'Wind shear and SRH values are well below tornado-supportive thresholds. Tornado probability is effectively zero for this forecast period.';
+  } else {
+    if(peak<5) headline='Near-zero tornado probability';
+    else if(peak<15) headline='Low-end tornado threat possible';
+    else if(peak<30) headline='Organized tornado threat — monitor conditions';
+    else if(peak<50) headline='Significant tornado threat — stay alert';
+    else headline='⚠ MAJOR tornado threat — take shelter';
+
+    if(peak<5) summary='A very slight chance of thunderstorms exists but tornado potential is extremely low. Atmospheric conditions are only marginally supportive.';
+    else if(peak<15) summary='A marginal tornado threat exists during the peak window. Conditions may support brief, weak tornadoes if discrete storms develop.';
+    else if(peak<30) summary='A SLIGHT to MODERATE tornado risk exists. Atmospheric parameters support supercell development. Stay weather-aware and monitor local alerts.';
+    else if(peak<50) summary='A HIGH tornado risk exists. Conditions strongly favor supercell thunderstorms with significant tornado potential. Have a shelter plan ready now.';
+    else summary='An EXTREME tornado risk exists. Atmospheric parameters are at severe-outbreak levels. Violent tornadoes are possible — take action immediately.';
+
+    discussion=buildDiscussion(peak,c,peakHour,alerts);
+  }
+  return {headline:headline,summary:summary,discussion:discussion};
+}
+
+function buildDiscussion(peak,c,peakHour,alerts){
+  var r=riskLevel(peak);
+  var d='<strong>Forecast Discussion (computed from Open-Meteo live data):</strong><br><br>';
+  d+='Peak tornado probability of <strong>'+peak+'%</strong> ('+r.level+' risk) is forecast for the period, ';
+  d+='with maximum values expected around <strong>'+peakHour+'</strong>. ';
+  if(c.cape>0){
+    d+='Convective Available Potential Energy (CAPE) is <strong>'+Math.round(c.cape).toLocaleString()+' J/kg</strong> — ';
+    d+=c.cape>2000?'indicating very strong atmospheric instability supportive of severe thunderstorms. ':
+       c.cape>800 ?'indicating moderate instability supportive of convection. ':
+                   'indicating limited instability that may constrain storm development. ';
+  }
+  if(c.shear06>0){
+    d+='0–6km bulk wind shear is estimated at <strong>'+Math.round(c.shear06)+' knots</strong>, ';
+    d+=c.shear06>50?'which is well above supercell thresholds and highly favorable for organized severe weather. ':
+       c.shear06>35?'meeting the threshold for supercell thunderstorm development. ':
+                    'which is marginal for supercell organization. ';
+  }
+  d+='The Significant Tornado Parameter (STP) is <strong>'+c.stp.toFixed(2)+'</strong>';
+  d+=c.stp>=2?' — well above the significant tornado threshold of 1.0. ':
+     c.stp>=1?' — meeting the significant tornado threshold. ':
+     c.stp>=0.5?' — approaching but below the significant tornado threshold. ':
+                ' — below tornado-supportive thresholds. ';
+  if(c.lclHeight<1500){
+    d+='Cloud bases (LCL ~<strong>'+Math.round(c.lclHeight)+' m</strong>) are ';
+    d+=c.lclHeight<800?'very low, which strongly favors tornado formation. ':
+                       'low, which is generally favorable for tornado potential. ';
+  }
+  if(c.cin>100) d+='Convective inhibition (CIN ~<strong>'+Math.round(c.cin)+' J/kg</strong>) is significant and may suppress storm initiation. ';
+  if(alerts.length) d+='<br><br>⚠ <strong>NWS has issued active weather alerts for this area.</strong> Check local NWS office for official watches and warnings.';
+  d+='<br><br><em>Indices computed using SPC Significant Tornado Parameter formula. Wind shear estimated from Open-Meteo multi-level winds. This tool is for situational awareness only.</em>';
+  return d;
+}
+
+function threshText(abbr){
+  var map={
+    'STP':'Significant tornado: ≥ 1.0',
+    'SCP':'Supercell: ≥ 1.0',
+    'CAPE':'Strong instability: > 2000 J/kg',
+    'SHR6':'Supercell shear: ≥ 40 kts',
+    'LCL':'Tornado-favorable: < 1000 m',
+    'SRH':'Significant tornado: > 150 m²/s²'
+  };
+  return map[abbr]||'';
+}
+
+function animNum(el,target,suffix){
+  var cur=0;
+  function go(){
+    cur=Math.min(cur+Math.max(1,Math.ceil((target-cur)/7)),target);
+    el.innerHTML=cur+'<span class="prob-pct">'+suffix+'</span>';
+    if(cur<target) requestAnimationFrame(go);
+  }
+  requestAnimationFrame(go);
+}
+
+function showErr(msg){
+  document.getElementById('loadingEl').classList.remove('on');
+  var el=document.getElementById('errorEl');
+  el.innerHTML='⚠ '+msg;
+  el.classList.add('on');
+  document.getElementById('goBtn').disabled=false;
+}
+
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+  });
+}
+function isIos(){return /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());}
+function isStandalone(){return window.navigator.standalone===true;}
+window.addEventListener('load',function(){
+  if(isIos()&&!isStandalone()&&!sessionStorage.getItem('vx-installed')){
+    setTimeout(function(){var b=document.getElementById('ib');if(b)b.style.display='flex';},2500);
+  }
+});
+function dismissBanner(){
+  var b=document.getElementById('ib');if(b)b.style.display='none';
+  sessionStorage.setItem('vx-installed','1');
+}
+
+</script>
+</body>
+</html>
